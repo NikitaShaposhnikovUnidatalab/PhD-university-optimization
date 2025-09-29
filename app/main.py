@@ -13,7 +13,7 @@ print(st.session_state)
 if st.button("⚙️ Налаштувати параметри"):
     st.switch_page("pages/input_config.py")
 
-if st.button("🚀 Запустити оптимізацію"):
+if st.button("🚀 Запустити загальну оптимізацію"):
     init_state_obj("QS_INPUT", QS_INPUT)
     init_state_obj("QS_WEIGHTS", QS_WEIGHTS)
     init_state_obj("QS_MAX", QS_MAX)

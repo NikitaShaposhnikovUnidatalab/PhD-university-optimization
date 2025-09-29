@@ -14,8 +14,9 @@ def compute_total_ru(QS_INPUT, QS_COST, solution):
     return total_ru
 
 # === QS Score === #
-def compute_qs_score(solution, QS_WEIGHTS):
-    return sum(solution[i] * w for i, w in enumerate(QS_WEIGHTS.values()))
+def compute_qs_score(solution, QS_WEIGHTS, keys):
+    """Compute score using the same key order as the solution array."""
+    return sum(float(solution[i]) * float(QS_WEIGHTS[k]) for i, k in enumerate(keys))
 
 # === Фітнес-функція === #
 def make_fitness(QS_INPUT, QS_COST, QS_WEIGHTS, MAX_RU):
@@ -40,46 +41,58 @@ def make_fitness(QS_INPUT, QS_COST, QS_WEIGHTS, MAX_RU):
         if total_ru > MAX_RU:
             return -1000 * (total_ru - MAX_RU)
 
-        return compute_qs_score(solution, QS_WEIGHTS)
+        return compute_qs_score(solution, QS_WEIGHTS, keys)
 
     return fitness_func
 
 # === Простір генів === #
-def generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX):
+def generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX, QS_COST):
     gene_space = []
     for k in QS_INPUT.keys():
-        low = QS_INPUT[k]
-        if QS_DELTA[k] == 0:
+        low = float(QS_INPUT[k])
+        # Freeze if delta == 0 or cost is infinite
+        if float(QS_DELTA.get(k, 0.0)) == 0.0 or QS_COST.get(k, 0.0) == float("inf"):
             gene_space.append([low])
         else:
-            high = min(low + QS_DELTA[k], QS_MAX[k])
+            high = float(min(low + float(QS_DELTA[k]), float(QS_MAX[k])))
             gene_space.append({"low": low, "high": high, "step": 0.1})
-    print("Gene space:", gene_space)
     return gene_space
 
 # === Запуск оптимізації === #
-def run_optimization(QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU):
-    gene_space = generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX)
+def run_optimization(
+    QS_INPUT,
+    QS_WEIGHTS,
+    QS_MAX,
+    QS_DELTA,
+    QS_COST,
+    MAX_RU,
+    *,
+    num_generations: int = 400,
+    sol_per_pop: int = 60,
+    num_parents_mating: int = 24,
+    mutation_percent_genes: int = 20,
+    stop_criteria: str | None = "saturate_15",
+    random_seed: int | None = 42,
+):
+    gene_space = generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX, QS_COST)
     fitness_func = make_fitness(QS_INPUT, QS_COST, QS_WEIGHTS, MAX_RU)
 
     ga_instance = pygad.GA(
-        num_generations=500,
-        num_parents_mating=20,
+        num_generations=num_generations,
+        num_parents_mating=num_parents_mating,
         fitness_func=fitness_func,
-        sol_per_pop=45,
+        sol_per_pop=sol_per_pop,
         num_genes=len(QS_INPUT),
         gene_space=gene_space,
-        mutation_percent_genes=20,
+        mutation_percent_genes=mutation_percent_genes,
         mutation_type="random",
         random_mutation_min_val=0,
         random_mutation_max_val=1,
-        stop_criteria="saturate_10"
+        stop_criteria=stop_criteria,
+        random_seed=random_seed,
     )
 
     ga_instance.run()
-    print("=== GA finished ===")
-    print("Best solution:", ga_instance.best_solution())
-    print("Best fitness:", ga_instance.best_solution()[1])
     return ga_instance
 
 def plot_progress(ga_instance):
@@ -133,28 +146,6 @@ def plot_stacked_bar(contrib_df, title="Stacked Bar внеску показни�
     plt.legend(title="Показник", bbox_to_anchor=(1.02, 1), loc="upper left")
     plt.tight_layout()
     
-# def plot_stacked_bar_normalized(delta_df, title="Нормалізовані прирости показників"):
-#     norm_df = delta_df.copy()
-#     for col in norm_df.columns:
-#         max_delta = norm_df[col].max()
-#         if max_delta > 0:
-#             norm_df[col] = norm_df[col] / max_delta
-#         else:
-#             norm_df[col] = 0.0
-
-#     norm_df.plot(
-#         kind="bar",
-#         stacked=True,
-#         figsize=(10, 6),
-#         cmap="tab20"
-#     )
-#     print(norm_df)
-#     plt.xlabel("Стратегія (топ #)")
-#     plt.ylabel("Нормалізований приріст (0..1)")
-#     plt.title(title)
-#     plt.legend(title="Показник", bbox_to_anchor=(1.02, 1), loc="upper left")
-#     plt.tight_layout()
-#     plt.show()
 
 if __name__ == "__main__":
     QS_INPUT = {"AR": 6.5, "ER": 10.6, "FSR": 54.3, "CPF": 1.3,
