@@ -96,11 +96,13 @@ def run_optimization(
     return ga_instance
 
 def plot_progress(ga_instance):
-    plt.plot(ga_instance.best_solutions_fitness)
-    plt.xlabel("Покоління")
-    plt.ylabel("QS Overall Score")
-    plt.title("Динаміка покращення QS Score")
-    plt.grid(True)
+    plt.figure(figsize=(10, 6))
+    plt.plot(ga_instance.best_solutions_fitness, linewidth=2, color='#2E86AB')
+    plt.xlabel("Покоління", fontsize=12, fontweight='bold')
+    plt.ylabel("QS Overall Score", fontsize=12, fontweight='bold')
+    plt.title("Динаміка покращення QS Score", fontsize=14, fontweight='bold', pad=20)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
     plt.show()
     
 # utils
