@@ -5,3 +5,5 @@ numpy
 pygad
 seaborn
 pulp
+optuna
+plotly

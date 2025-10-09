@@ -11,7 +11,9 @@ st.set_page_config(
 st.title("🎓 QS Ranking Optimizer")
 st.markdown("**Система оптимізації рейтингу університету для покращення позицій у QS World University Rankings**")
 
-# Hero section
+print("🎓 Користувач завантажив головну сторінку")
+print(f"📊 Поточний стан сесії: {list(st.session_state.keys())}")
+
 col1, col2 = st.columns([2, 1])
 with col1:
     st.markdown("""
@@ -41,7 +43,6 @@ with col2:
 
 st.markdown("---")
 
-# Main actions
 st.subheader("🎯 Почати роботу")
 
 col1, col2 = st.columns(2)
@@ -50,21 +51,24 @@ with col1:
     st.markdown("### ⚙️ Налаштування")
     st.markdown("Введіть поточні значення показників, ваги та обмеження")
     if st.button("⚙️ Налаштувати параметри", type="primary", use_container_width=True):
+        print("🔧 Користувач натиснув кнопку 'Налаштувати параметри' - перехід на сторінку конфігурації")
         st.switch_page("pages/input_config.py")
 
 with col2:
     st.markdown("### 🚀 Оптимізація")
     st.markdown("Запустіть оптимізацію з налаштованими параметрами")
     if st.button("🚀 Запустити оптимізацію", type="secondary", use_container_width=True):
+        print("🚀 Користувач натиснув кнопку 'Запустити оптимізацію' - ініціалізація стану та перехід на сторінку оптимізації")
+        print(f"📊 Ініціалізовано стан з параметрами: MAX_RU={MAX_RU}")
         init_state_obj("QS_INPUT", QS_INPUT)
         init_state_obj("QS_WEIGHTS", QS_WEIGHTS)
         init_state_obj("QS_MAX", QS_MAX)
         init_state_obj("QS_DELTA", QS_DELTA)
         init_state_obj("QS_COST", QS_COST)
         init_state_value("MAX_RU", MAX_RU)
+        print(f"📊 Поточний стан сесії: {list(st.session_state.keys())}")
         st.switch_page("pages/genetic_optimizer.py")
 
-# Features section
 st.markdown("---")
 st.subheader("✨ Можливості системи")
 
@@ -96,7 +100,6 @@ with features_col2:
     - Аналіз внеску показників
     """)
 
-# Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666;'>

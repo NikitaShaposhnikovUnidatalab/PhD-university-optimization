@@ -13,15 +13,15 @@ def optimize_qs_pulp(
     selected_indicators: List[str] | None = None,
 ) -> Tuple[Dict[str, float], float, pd.DataFrame]:
     """
-    Solve a discrete linear optimization of QS score using Pulp.
+    Вирішує дискретну лінійну оптимізацію QS оцінки використовуючи Pulp.
 
-    - Decision vars: integer k_k (how many 0.1 steps we take for indicator k)
-    - Objective: maximize sum_k weight_k * (x0_k + 0.1 * k_k)
-    - Constraints:
+    - Змінні рішення: цілі k_k (скільки кроків по 0.1 ми робимо для показника k)
+    - Цільова функція: максимізувати sum_k weight_k * (x0_k + 0.1 * k_k)
+    - Обмеження:
         * 0 <= 0.1 * k_k <= min(QS_DELTA[k], QS_MAX[k] - x0_k)
-        * sum_k QS_COST[k] * (0.1 * k_k) <= MAX_RU (only for finite costs)
-        * if k not selected -> k_k = 0
-        * if QS_COST[k] == inf -> k_k = 0 (frozen)
+        * sum_k QS_COST[k] * (0.1 * k_k) <= MAX_RU (тільки для скінченних вартостей)
+        * якщо k не обрано -> k_k = 0
+        * якщо QS_COST[k] == inf -> k_k = 0 (заморожено)
     """
 
     keys = list(QS_INPUT.keys())
@@ -32,7 +32,7 @@ def optimize_qs_pulp(
 
     k_vars: Dict[str, pulp.LpVariable] = {}
     for k in keys:
-        # effective max increase considering QS_DELTA and QS_MAX
+        # ефективне максимальне збільшення з урахуванням QS_DELTA та QS_MAX
         max_inc = max(0.0, min(float(QS_DELTA.get(k, 0.0)), float(QS_MAX[k]) - float(QS_INPUT[k])))
         max_steps = int(round(max_inc / 0.1))
 
@@ -41,12 +41,12 @@ def optimize_qs_pulp(
         else:
             k_vars[k] = pulp.LpVariable(f"k_{k}", lowBound=0, upBound=0, cat="Integer")
 
-    # Objective
+    # Цільова функція
     model += pulp.lpSum([
         float(QS_WEIGHTS[k]) * (float(QS_INPUT[k]) + 0.1 * k_vars[k]) for k in keys
     ])
 
-    # RU budget constraint
+    # Обмеження бюджету RU
     model += pulp.lpSum([
         float(QS_COST[k]) * 0.1 * k_vars[k] for k in keys if QS_COST[k] < float("inf")
     ]) <= float(MAX_RU)
@@ -113,17 +113,17 @@ if __name__ == "__main__":
         "SUS": 1.0
     }
     QS_COST = {
-        "AR": 100,
-        "ER": 90,
-        "FSR": 40,
-        "CPF": 30,
-        "IFR": 60,
+        "AR": 50,
+        "ER": 45,
+        "FSR": 20,
+        "CPF": 15,
+        "IFR": 30,
         "ISR": float("inf"),
-        "IRN": 20,
-        "EO": 20,
-        "SUS": 10
+        "IRN": 10,
+        "EO": 10,
+        "SUS": 5
     }
-    MAX_RU = 200
+    MAX_RU = 100
     x_2026, qs_score, df = optimize_qs_pulp(
         QS_INPUT=QS_INPUT,
         QS_WEIGHTS=QS_WEIGHTS,
