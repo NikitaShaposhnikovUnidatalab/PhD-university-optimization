@@ -7,3 +7,17 @@ seaborn
 pulp
 optuna
 plotly
+chromadb
+sentence-transformers
+pypdf
+python-docx
+google-generativeai
+# LangChain dependencies
+# langchain
+# langchain-community
+# langchain-chroma
+# transformers
+# torch
+# accelerate
+python-dotenv
+google-genai

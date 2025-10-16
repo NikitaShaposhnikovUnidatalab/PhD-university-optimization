@@ -7,9 +7,10 @@ from itertools import combinations
 import time
 import sys
 import os
+from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from top_n_optimizer import run_top_n_ga_optimization, run_top_n_lp_optimization
-from genetic_optimizer import run_optimization, plot_progress, get_top_solutions, compute_total_ru
+from genetic_optimizer import run_optimization, plot_progress, get_top_solutions, compute_total_ru, save_experiment_to_session
 from lp import optimize_qs_pulp
 
 plt.style.use('seaborn-v0_8')
@@ -68,10 +69,11 @@ with col3:
 
 st.markdown("---")
 
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Оптимізація всіх показників", 
     "🎯 Оптимізація обраних показників", 
-    "🏆 Топ 3-5 показників"
+    "🏆 Топ 3-5 показників",
+    "📈 Результати експериментів"
 ])
 
 with tab1:
@@ -189,6 +191,27 @@ with tab1:
         result = dict(zip(QS_INPUT.keys(), solution))
 
         total_ru = compute_total_ru(QS_INPUT, QS_COST, solution)
+        
+        experiment = save_experiment_to_session(
+            algorithm="GA",
+            current_qs=current_qs,
+            qs_score=qs_score,
+            ru_used=total_ru,
+            execution_time=elapsed_time_ga_full,
+            # parameters=algorithm_params,
+            comparison_metrics={
+                "improvement": qs_score - current_qs,
+                "improvement_percent": ((qs_score - current_qs) / current_qs * 100) if current_qs > 0 else 0,
+                "efficiency": (qs_score - current_qs) / total_ru if total_ru > 0 else 0,
+                "budget_utilization": total_ru / MAX_RU if MAX_RU > 0 else 0,
+                "current_qs": current_qs
+            },
+            QS_INPUT=QS_INPUT,
+            solution=solution
+        )
+        
+        # Зберігаємо експеримент для AI аналізу
+        st.session_state["last_ga_experiment"] = experiment
 
         st.success("✅ **Оптимізація завершена!**")
         
@@ -362,7 +385,7 @@ with tab1:
         ax.set_ylabel("Стратегія", fontsize=12, fontweight='bold')
         plt.tight_layout()
         st.pyplot(fig)
-
+        
 
     st.markdown("---")
     st.subheader("🔧 Альтернатива: Лінійне програмування (LP)")
@@ -396,6 +419,27 @@ with tab1:
         st.success("✅ **LP-оптимізація завершена!**")
         elapsed_time_lp_full = time.time() - start_time
         print(f"✅ LP-оптимізація завершена за {elapsed_time_lp_full:.1f}с, QS Score: {qs_score_lp:.2f}")
+        
+        experiment = save_experiment_to_session(
+            algorithm="LP",
+            current_qs=current_qs,
+            qs_score=float(qs_score_lp),
+            ru_used=ru_used,
+            execution_time=elapsed_time_lp_full,
+            solution_details={"solution": x_2026, "algorithm": "LP"},
+            comparison_metrics={
+                "improvement": float(qs_score_lp) - current_qs,
+                "improvement_percent": ((float(qs_score_lp) - current_qs) / current_qs * 100) if current_qs > 0 else 0,
+                "efficiency": (float(qs_score_lp) - current_qs) / ru_used if ru_used > 0 else 0,
+                "budget_utilization": ru_used / MAX_RU if MAX_RU > 0 else 0,
+                "current_qs": current_qs
+            },
+            QS_INPUT=QS_INPUT,
+            solution=[float(x_2026[k]) for k in QS_INPUT.keys()]
+        )
+        
+        # Зберігаємо експеримент для AI аналізу
+        st.session_state["last_lp_experiment"] = experiment
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             st.metric("QS Score (LP)", f"{qs_score_lp:.2f}", delta=f"{qs_score_lp - current_qs:.2f}")
@@ -512,6 +556,92 @@ with tab1:
         plt.tight_layout()
         st.pyplot(fig)
         plt.clf()
+    
+    # AI Аналіз секція - завжди відображається
+    st.markdown("---")
+    st.subheader("🤖 AI Аналіз результатів")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🧠 Генерувати AI інсайт (GA)", type="primary", use_container_width=True):
+            print("🧠 Користувач запустив AI аналіз результату GA оптимізації")
+            with st.spinner("🤖 AI аналізує результат GA оптимізації..."):
+                try:
+                    import sys
+                    from pathlib import Path
+                    sys.path.insert(0, str(Path(__file__).parent.parent))
+                    from llm import generate_qs_insights
+                    
+                    # Використовуємо збережений експеримент
+                    if "last_ga_experiment" in st.session_state:
+                        experiment = st.session_state["last_ga_experiment"]
+                        insights_result = generate_qs_insights(experiment, current_qs, MAX_RU)
+                        st.session_state["last_insights_ga"] = insights_result
+                        st.success("✅ **AI аналіз GA завершено!**")
+                    else:
+                        st.error("❌ **Немає даних GA експерименту**")
+                        st.info("💡 Спочатку запустіть GA оптимізацію")
+                    
+                except Exception as e:
+                    st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
+                    st.info("💡 Перевірте налаштування API ключа Google Gemini")
+    
+    with col2:
+        if st.button("🧠 Генерувати AI інсайт (LP)", type="primary", use_container_width=True):
+            print("🧠 Користувач запустив AI аналіз результату LP оптимізації")
+            with st.spinner("🤖 AI аналізує результат LP оптимізації..."):
+                try:
+                    import sys
+                    from pathlib import Path
+                    sys.path.insert(0, str(Path(__file__).parent.parent))
+                    from llm import generate_qs_insights
+                    
+                    # Використовуємо збережений експеримент
+                    if "last_lp_experiment" in st.session_state:
+                        experiment = st.session_state["last_lp_experiment"]
+                        insights_result = generate_qs_insights(experiment, current_qs, MAX_RU)
+                        st.session_state["last_insights_lp"] = insights_result
+                        st.success("✅ **AI аналіз LP завершено!**")
+                    else:
+                        st.error("❌ **Немає даних LP експерименту**")
+                        st.info("💡 Спочатку запустіть LP оптимізацію")
+                    
+                except Exception as e:
+                    st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
+                    st.info("💡 Перевірте налаштування API ключа Google Gemini")
+    
+    # Відображаємо інсайти GA якщо є
+    if "last_insights_ga" in st.session_state:
+        insights = st.session_state["last_insights_ga"]
+        
+        if insights["status"] == "success":
+            st.subheader("💡 AI Аналіз та Рекомендації (GA)")
+            st.markdown(insights.get("text", "Відповідь відсутня"))
+                
+        elif insights["status"] == "no_api":
+            st.error("❌ **API ключ Google Gemini не налаштовано**")
+            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
+        elif insights["status"] == "error":
+            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
+        elif insights["status"] == "empty":
+            st.warning("⚠️ Отримано порожню відповідь від LLM")
+    
+    # Відображаємо інсайти LP якщо є
+    if "last_insights_lp" in st.session_state:
+        insights = st.session_state["last_insights_lp"]
+        
+        if insights["status"] == "success":
+            st.subheader("💡 AI Аналіз та Рекомендації (LP)")
+            st.markdown(insights.get("text", "Відповідь відсутня"))
+                
+        elif insights["status"] == "no_api":
+            st.error("❌ **API ключ Google Gemini не налаштовано**")
+            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
+        elif insights["status"] == "error":
+            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
+        elif insights["status"] == "empty":
+            st.warning("⚠️ Отримано порожню відповідь від LLM")
 
 with tab2:
     st.subheader("🎯 Вибір показників для покращення")
@@ -666,6 +796,23 @@ with tab2:
                 print(f"✅ GA-оптимізація обраних показників завершена, QS Score: {qs_score:.2f}")
 
                 total_ru = compute_total_ru(QS_INPUT, QS_COST, solution)
+                
+                experiment = save_experiment_to_session(
+                    algorithm="GA_Selected",
+                    current_qs=current_qs,
+                    qs_score=qs_score,
+                    ru_used=total_ru,
+                    execution_time=time.time() - start_time,
+                    comparison_metrics={
+                        "improvement": qs_score - current_qs,
+                        "improvement_percent": ((qs_score - current_qs) / current_qs * 100) if current_qs > 0 else 0,
+                        "efficiency": (qs_score - current_qs) / total_ru if total_ru > 0 else 0,
+                        "budget_utilization": total_ru / MAX_RU if MAX_RU > 0 else 0,
+                        "current_qs": current_qs
+                    },
+                    QS_INPUT=QS_INPUT,
+                    solution=solution
+                )
 
                 st.success("✅ **GA-оптимізація (обрані) завершена!**")
                 
@@ -708,6 +855,24 @@ with tab2:
                 ru_used = sum(
                     (deltas[k] * float(QS_COST[k])) if QS_COST[k] < float("inf") else 0.0
                     for k in QS_INPUT.keys()
+                )
+                
+                experiment = save_experiment_to_session(
+                    algorithm="LP_Selected",
+                    current_qs=current_qs,
+                    qs_score=float(qs_score_lp),
+                    ru_used=ru_used,
+                    execution_time=time.time() - start_time,
+                    solution_details={"solution": x_2026, "algorithm": "LP"},
+                    comparison_metrics={
+                        "improvement": float(qs_score_lp) - current_qs,
+                        "improvement_percent": ((float(qs_score_lp) - current_qs) / current_qs * 100) if current_qs > 0 else 0,
+                        "efficiency": (float(qs_score_lp) - current_qs) / ru_used if ru_used > 0 else 0,
+                        "budget_utilization": ru_used / MAX_RU if MAX_RU > 0 else 0,
+                        "current_qs": current_qs
+                    },
+                    QS_INPUT=QS_INPUT,
+                    solution=[float(x_2026[k]) for k in QS_INPUT.keys()]
                 )
 
                 st.success("✅ **LP-оптимізація (обрані) завершена!**")
@@ -888,3 +1053,158 @@ with tab3:
                 if algorithm == "Лінійне програмування (LP)":
                     print(f"🏆 Користувач запустив топ-N LP-оптимізацію: {num_indicators} показників з {len(eligible)} доступних")
                     run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU, current_qs)
+
+with tab4:
+    st.subheader("📈 Результати експериментів")
+    st.markdown("**Перегляд всіх проведених експериментів та їх результатів**")
+    
+    # Отримуємо дані з сесії
+    experiments = st.session_state.get("experiments_data", [])
+    
+    if not experiments:
+        st.info("📊 **Поки що немає проведених експериментів.**")
+        st.markdown("""
+        **Щоб побачити дані експериментів:**
+        1. Запустіть будь-яку оптимізацію на попередніх вкладках
+        2. Після завершення експерименту дані автоматично зберігаться
+        3. Поверніться на цю вкладку для перегляду результатів
+        """)
+    else:
+        st.success(f"📊 **Знайдено {len(experiments)} експериментів**")
+        
+        # Статистика
+        algorithms_used = list(set(exp["algorithm"] for exp in experiments))
+        best_qs = max(exp["qs_score"] for exp in experiments) if experiments else 0
+        avg_qs = sum(exp["qs_score"] for exp in experiments) / len(experiments) if experiments else 0
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Всього експериментів", len(experiments))
+        with col2:
+            st.metric("Найкращий QS Score", f"{best_qs:.3f}")
+        with col3:
+            st.metric("Середній QS Score", f"{avg_qs:.3f}")
+        with col4:
+            st.metric("Алгоритмів використано", len(algorithms_used))
+        
+        # Фільтрація
+        st.subheader("🔍 Фільтрація експериментів")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            selected_algorithm = st.selectbox(
+                "Алгоритм:",
+                options=["Всі"] + algorithms_used,
+                key="filter_algorithm"
+            )
+        
+        with col2:
+            sort_by = st.selectbox(
+                "Сортувати за:",
+                options=["QS Score", "Час виконання", "Дата"],
+                key="sort_experiments"
+            )
+        
+        # Фільтруємо експерименти
+        filtered_experiments = experiments
+        if selected_algorithm != "Всі":
+            filtered_experiments = [exp for exp in filtered_experiments if exp["algorithm"] == selected_algorithm]
+        
+        # Сортуємо
+        if sort_by == "QS Score":
+            filtered_experiments = sorted(filtered_experiments, key=lambda x: x["qs_score"], reverse=True)
+        elif sort_by == "Час виконання":
+            filtered_experiments = sorted(filtered_experiments, key=lambda x: x["execution_time"])
+        else:  # Дата
+            filtered_experiments = sorted(filtered_experiments, key=lambda x: x["timestamp"], reverse=True)
+        
+        st.subheader(f"📋 Результати ({len(filtered_experiments)} експериментів)")
+        
+        # Створюємо DataFrame для відображення
+        display_data = []
+        for i, exp in enumerate(filtered_experiments, 1):
+            row = {
+                "#": i,
+                "Алгоритм": exp["algorithm"],
+                "QS Score": f"{exp['qs_score']:.3f}",
+                "RU використано": f"{exp['ru_used']:.1f}",
+                "Час (с)": f"{exp['execution_time']:.1f}",
+                "Дата": exp["timestamp"][:19].replace("T", " "),
+                "Покращені показники": ", ".join(exp.get("improved_indicators", [])) or "немає"
+            }
+            
+            # Додаємо метрики порівняння якщо є
+            if "comparison_metrics" in exp and exp["comparison_metrics"]:
+                metrics = exp["comparison_metrics"]
+                row["Покращення"] = f"{metrics.get('improvement', 0):.3f}"
+                row["Ефективність"] = f"{metrics.get('efficiency', 0):.3f}"
+                row["Використання бюджету"] = f"{metrics.get('budget_utilization', 0):.1%}"
+            
+            display_data.append(row)
+        
+        if display_data:
+            df_display = pd.DataFrame(display_data)
+            st.dataframe(df_display, use_container_width=True)
+            
+            # Найкращий експеримент
+            best_exp = max(experiments, key=lambda x: x["qs_score"]) if experiments else None
+            if best_exp:
+                st.subheader("🏆 Найкращий експеримент")
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Алгоритм", best_exp["algorithm"])
+                with col2:
+                    st.metric("QS Score", f"{best_exp['qs_score']:.3f}")
+                with col3:
+                    st.metric("RU використано", f"{best_exp['ru_used']:.1f}")
+                with col4:
+                    st.metric("Час виконання", f"{best_exp['execution_time']:.1f}с")
+                
+                # Показуємо покращені показники
+                improved_indicators = best_exp.get("improved_indicators", [])
+                if improved_indicators:
+                    st.info(f"🎯 **Покращені показники:** {', '.join(improved_indicators)}")
+                else:
+                    st.info("🎯 **Покращені показники:** немає")
+        
+        # Кнопки експорту
+        st.subheader("💾 Експорт даних")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("📊 Експорт в CSV", use_container_width=True):
+                if experiments:
+                    df_export = pd.DataFrame(experiments)
+                    csv = df_export.to_csv(index=False, encoding='utf-8')
+                    st.download_button(
+                        label="💾 Завантажити CSV",
+                        data=csv,
+                        file_name=f"experiments_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("Немає даних для експорту")
+        
+        with col2:
+            if st.button("📋 Показати статистику", use_container_width=True):
+                stats = {
+                    "total_experiments": len(experiments),
+                    "algorithms_used": algorithms_used,
+                    "best_qs_score": best_qs,
+                    "avg_qs_score": avg_qs,
+                    "avg_execution_time": sum(exp["execution_time"] for exp in experiments) / len(experiments) if experiments else 0
+                }
+                st.json(stats)
+        
+        with col3:
+            if st.button("🗑️ Очистити дані", use_container_width=True):
+                if st.session_state.get("confirm_clear", False):
+                    st.session_state["experiments_data"] = []
+                    st.success("✅ Дані очищено")
+                    st.rerun()
+                else:
+                    st.session_state["confirm_clear"] = True
+                    st.warning("⚠️ Натисніть ще раз для підтвердження")
+

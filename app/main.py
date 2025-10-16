@@ -69,6 +69,7 @@ with col2:
         print(f"📊 Поточний стан сесії: {list(st.session_state.keys())}")
         st.switch_page("pages/genetic_optimizer.py")
 
+
 st.markdown("---")
 st.subheader("✨ Можливості системи")
 

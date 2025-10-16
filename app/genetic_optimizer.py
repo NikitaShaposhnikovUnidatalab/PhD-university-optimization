@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import optuna
 from typing import Dict, Any, Optional
+import time
 
 def compute_total_ru(QS_INPUT, QS_COST, solution):
     total_ru = 0
@@ -276,6 +277,55 @@ def get_top_solutions(ga_instance, QS_INPUT, QS_COST, QS_WEIGHTS, top_n=10):
     contrib_df = contrib_df[keys]
     return df, contrib_df
 
+def save_experiment_to_session(algorithm, current_qs, qs_score, ru_used, execution_time, solution_details=None, comparison_metrics=None,
+                              improved_indicators=None, QS_INPUT=None, solution=None):
+    """
+    Зберігає дані експерименту в сесії Streamlit
+    
+    Args:
+        algorithm: Назва алгоритму
+        current_qs: Початковий QS Score
+        qs_score: QS Score результату
+        ru_used: Витрати RU
+        execution_time: Час виконання
+        solution_details: Деталі рішення
+        comparison_metrics: Метрики порівняння
+        improved_indicators: Список покращених показників
+        QS_INPUT: Початкові значення показників
+        solution: Рішення (масив значень)
+    """
+    import streamlit as st
+    from datetime import datetime
+    
+    # Ініціалізуємо список експериментів в сесії якщо його немає
+    if "experiments_data" not in st.session_state:
+        st.session_state["experiments_data"] = []
+    
+    # Визначаємо покращені показники якщо не передано
+    if improved_indicators is None and QS_INPUT is not None and solution is not None:
+        improved_indicators = []
+        for i, (key, initial_value) in enumerate(QS_INPUT.items()):
+            if i < len(solution) and float(solution[i]) > float(initial_value):
+                improved_indicators.append(key)
+    
+    # Створюємо запис експерименту
+    experiment = {
+        "timestamp": datetime.now().isoformat(),
+        "algorithm": algorithm,
+        "current_qs": float(current_qs),
+        "qs_score": float(qs_score),
+        "ru_used": float(ru_used),
+        "execution_time": float(execution_time),
+        "solution_details": solution_details or {},
+        "comparison_metrics": comparison_metrics or {},
+        "improved_indicators": improved_indicators or []
+    }
+
+    st.session_state["experiments_data"].append(experiment)
+    print(st.session_state["experiments_data"])
+    
+    improved_str = ", ".join(improved_indicators) if improved_indicators else "немає"
+    return experiment
 
 if __name__ == "__main__":
     QS_INPUT = {"AR": 6.5, "ER": 10.6, "FSR": 54.3, "CPF": 1.3,

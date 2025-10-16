@@ -6,7 +6,7 @@ from itertools import combinations
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from genetic_optimizer import run_optimization, compute_total_ru
+from genetic_optimizer import run_optimization, compute_total_ru, save_experiment_to_session
 from lp import optimize_qs_pulp
 
 def run_top_n_ga_optimization(eligible, num_indicators, num_generations, sol_per_pop, num_parents_mating, mutation_percent_genes, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU, current_qs, auto_find_params=False, n_trials=10):
@@ -82,6 +82,32 @@ def run_top_n_ga_optimization(eligible, num_indicators, num_generations, sol_per
         status_text.text(f"✅ GA завершено за {elapsed_time:.1f} секунд")
         progress_bar.empty()
         
+        # Зберігаємо дані про топ-N експеримент в сесії
+        if not results_df.empty:
+            best_result = results_df.iloc[0]
+            save_experiment_to_session(
+                algorithm="GA_TopN",
+                current_qs=current_qs,
+                qs_score=best_result['qs_score'],
+                ru_used=best_result['ru'],
+                execution_time=elapsed_time,
+                solution_details={
+                    "best_combo": list(best_result['combo']),
+                    "total_combinations_tested": len(results_df),
+                    "algorithm": "GA"
+                },
+                comparison_metrics={
+                    "improvement": best_result['qs_score'] - current_qs,
+                    "improvement_percent": ((best_result['qs_score'] - current_qs) / current_qs * 100) if current_qs > 0 else 0,
+                    "efficiency": (best_result['qs_score'] - current_qs) / best_result['ru'] if best_result['ru'] > 0 else 0,
+                    "budget_utilization": best_result['ru'] / MAX_RU if MAX_RU > 0 else 0,
+                    "current_qs": current_qs
+                },
+                improved_indicators=list(best_result['combo']),
+                QS_INPUT=QS_INPUT,
+                solution=best_result['solution']
+            )
+        
         display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, "GA", QS_INPUT, QS_WEIGHTS)
 
 def run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU, current_qs):
@@ -149,6 +175,31 @@ def run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS
         elapsed_time = time.time() - start_time
         status_text.text(f"✅ LP завершено за {elapsed_time:.1f} секунд")
         progress_bar.empty()
+        
+        if not results_df.empty:
+            best_result = results_df.iloc[0]
+            save_experiment_to_session(
+                algorithm="LP_TopN",
+                current_qs=current_qs,
+                qs_score=best_result['qs_score'],
+                ru_used=best_result['ru'],
+                execution_time=elapsed_time,
+                solution_details={
+                    "best_combo": list(best_result['combo']),
+                    "total_combinations_tested": len(results_df),
+                    "algorithm": "LP"
+                },
+                comparison_metrics={
+                    "improvement": best_result['qs_score'] - current_qs,
+                    "improvement_percent": ((best_result['qs_score'] - current_qs) / current_qs * 100) if current_qs > 0 else 0,
+                    "efficiency": (best_result['qs_score'] - current_qs) / best_result['ru'] if best_result['ru'] > 0 else 0,
+                    "budget_utilization": best_result['ru'] / MAX_RU if MAX_RU > 0 else 0,
+                    "current_qs": current_qs
+                },
+                improved_indicators=list(best_result['combo']),
+                QS_INPUT=QS_INPUT,
+                solution=best_result['solution']
+            )
         
         display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, "LP", QS_INPUT, QS_WEIGHTS)
 

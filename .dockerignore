@@ -1,0 +1,59 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Notebooks and experiments
+*.ipynb
+QS_WUR_Graphs_*.*
+rag.ipynb
+
+# Docs and Office files
+*.docx
+*.pdf
+docs/
+Формули_алгоритмів*/
+
+# Local databases, embeddings, indexes
+chroma_db/
+
+# Logs, outputs, models
+*.log
+*.pkl
+*.csv
+*.xlsx
+*.zip
+*.json
+*.npy
+*.pt
+*.h5
+models/
+outputs/
+logs/
+
+# IDE / system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files (copied separately if needed)
+.env
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+LLM_INSIGHTS.md
