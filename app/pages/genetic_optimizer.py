@@ -814,6 +814,9 @@ with tab2:
                     solution=solution
                 )
 
+                # Зберігаємо експеримент для AI аналізу
+                st.session_state["last_ga_selected_experiment"] = experiment
+
                 st.success("✅ **GA-оптимізація (обрані) завершена!**")
                 
                 col1, col2, col3, col4 = st.columns(4)
@@ -875,6 +878,9 @@ with tab2:
                     solution=[float(x_2026[k]) for k in QS_INPUT.keys()]
                 )
 
+                # Зберігаємо експеримент для AI аналізу
+                st.session_state["last_lp_selected_experiment"] = experiment
+
                 st.success("✅ **LP-оптимізація (обрані) завершена!**")
                 
                 col1, col2, col3, col4 = st.columns(4)
@@ -891,6 +897,92 @@ with tab2:
 
                 st.subheader("📊 Результати LP-оптимізації (обрані)")
                 st.dataframe(df_lp, use_container_width=True)
+
+    # AI Аналіз секція для табу 2 - завжди відображається
+    st.markdown("---")
+    st.subheader("🤖 AI Аналіз результатів (обрані показники)")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🧠 Генерувати AI інсайт (GA обрані)", type="primary", use_container_width=True):
+            print("🧠 Користувач запустив AI аналіз результату GA оптимізації обраних показників")
+            with st.spinner("🤖 AI аналізує результат GA оптимізації обраних показників..."):
+                try:
+                    import sys
+                    from pathlib import Path
+                    sys.path.insert(0, str(Path(__file__).parent.parent))
+                    from llm import generate_qs_insights
+                    
+                    # Використовуємо збережений експеримент
+                    if "last_ga_selected_experiment" in st.session_state:
+                        experiment = st.session_state["last_ga_selected_experiment"]
+                        insights_result = generate_qs_insights(experiment, current_qs, MAX_RU)
+                        st.session_state["last_insights_ga_selected"] = insights_result
+                        st.success("✅ **AI аналіз GA (обрані) завершено!**")
+                    else:
+                        st.error("❌ **Немає даних GA експерименту обраних показників**")
+                        st.info("💡 Спочатку запустіть GA оптимізацію обраних показників")
+                    
+                except Exception as e:
+                    st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
+                    st.info("💡 Перевірте налаштування API ключа Google Gemini")
+    
+    with col2:
+        if st.button("🧠 Генерувати AI інсайт (LP обрані)", type="primary", use_container_width=True):
+            print("🧠 Користувач запустив AI аналіз результату LP оптимізації обраних показників")
+            with st.spinner("🤖 AI аналізує результат LP оптимізації обраних показників..."):
+                try:
+                    import sys
+                    from pathlib import Path
+                    sys.path.insert(0, str(Path(__file__).parent.parent))
+                    from llm import generate_qs_insights
+                    
+                    # Використовуємо збережений експеримент
+                    if "last_lp_selected_experiment" in st.session_state:
+                        experiment = st.session_state["last_lp_selected_experiment"]
+                        insights_result = generate_qs_insights(experiment, current_qs, MAX_RU)
+                        st.session_state["last_insights_lp_selected"] = insights_result
+                        st.success("✅ **AI аналіз LP (обрані) завершено!**")
+                    else:
+                        st.error("❌ **Немає даних LP експерименту обраних показників**")
+                        st.info("💡 Спочатку запустіть LP оптимізацію обраних показників")
+                    
+                except Exception as e:
+                    st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
+                    st.info("💡 Перевірте налаштування API ключа Google Gemini")
+    
+    # Відображаємо інсайти GA обраних якщо є
+    if "last_insights_ga_selected" in st.session_state:
+        insights = st.session_state["last_insights_ga_selected"]
+        
+        if insights["status"] == "success":
+            st.subheader("💡 AI Аналіз та Рекомендації (GA обрані)")
+            st.markdown(insights.get("text", "Відповідь відсутня"))
+                
+        elif insights["status"] == "no_api":
+            st.error("❌ **API ключ Google Gemini не налаштовано**")
+            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
+        elif insights["status"] == "error":
+            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
+        elif insights["status"] == "empty":
+            st.warning("⚠️ Отримано порожню відповідь від LLM")
+    
+    # Відображаємо інсайти LP обраних якщо є
+    if "last_insights_lp_selected" in st.session_state:
+        insights = st.session_state["last_insights_lp_selected"]
+        
+        if insights["status"] == "success":
+            st.subheader("💡 AI Аналіз та Рекомендації (LP обрані)")
+            st.markdown(insights.get("text", "Відповідь відсутня"))
+                
+        elif insights["status"] == "no_api":
+            st.error("❌ **API ключ Google Gemini не налаштовано**")
+            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
+        elif insights["status"] == "error":
+            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
+        elif insights["status"] == "empty":
+            st.warning("⚠️ Отримано порожню відповідь від LLM")
 
 with tab3:
     st.subheader("🏆 Топ стратегій: Автоматичний пошук найкращих комбінацій")
@@ -1053,6 +1145,92 @@ with tab3:
                 if algorithm == "Лінійне програмування (LP)":
                     print(f"🏆 Користувач запустив топ-N LP-оптимізацію: {num_indicators} показників з {len(eligible)} доступних")
                     run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU, current_qs)
+
+    # AI Аналіз секція для табу 3 - завжди відображається
+    st.markdown("---")
+    st.subheader("🤖 AI Аналіз результатів (топ стратегії)")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🧠 Генерувати AI інсайт (GA топ-N)", type="primary", use_container_width=True):
+            print("🧠 Користувач запустив AI аналіз результату GA топ-N оптимізації")
+            with st.spinner("🤖 AI аналізує результат GA топ-N оптимізації..."):
+                try:
+                    import sys
+                    from pathlib import Path
+                    sys.path.insert(0, str(Path(__file__).parent.parent))
+                    from llm import generate_qs_insights
+                    
+                    # Використовуємо збережений експеримент
+                    if "last_ga_topn_experiment" in st.session_state:
+                        experiment = st.session_state["last_ga_topn_experiment"]
+                        insights_result = generate_qs_insights(experiment, current_qs, MAX_RU)
+                        st.session_state["last_insights_ga_topn"] = insights_result
+                        st.success("✅ **AI аналіз GA (топ-N) завершено!**")
+                    else:
+                        st.error("❌ **Немає даних GA експерименту топ-N**")
+                        st.info("💡 Спочатку запустіть GA топ-N оптимізацію")
+                    
+                except Exception as e:
+                    st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
+                    st.info("💡 Перевірте налаштування API ключа Google Gemini")
+    
+    with col2:
+        if st.button("🧠 Генерувати AI інсайт (LP топ-N)", type="primary", use_container_width=True):
+            print("🧠 Користувач запустив AI аналіз результату LP топ-N оптимізації")
+            with st.spinner("🤖 AI аналізує результат LP топ-N оптимізації..."):
+                try:
+                    import sys
+                    from pathlib import Path
+                    sys.path.insert(0, str(Path(__file__).parent.parent))
+                    from llm import generate_qs_insights
+                    
+                    # Використовуємо збережений експеримент
+                    if "last_lp_topn_experiment" in st.session_state:
+                        experiment = st.session_state["last_lp_topn_experiment"]
+                        insights_result = generate_qs_insights(experiment, current_qs, MAX_RU)
+                        st.session_state["last_insights_lp_topn"] = insights_result
+                        st.success("✅ **AI аналіз LP (топ-N) завершено!**")
+                    else:
+                        st.error("❌ **Немає даних LP експерименту топ-N**")
+                        st.info("💡 Спочатку запустіть LP топ-N оптимізацію")
+                    
+                except Exception as e:
+                    st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
+                    st.info("💡 Перевірте налаштування API ключа Google Gemini")
+    
+    # Відображаємо інсайти GA топ-N якщо є
+    if "last_insights_ga_topn" in st.session_state:
+        insights = st.session_state["last_insights_ga_topn"]
+        
+        if insights["status"] == "success":
+            st.subheader("💡 AI Аналіз та Рекомендації (GA топ-N)")
+            st.markdown(insights.get("text", "Відповідь відсутня"))
+                
+        elif insights["status"] == "no_api":
+            st.error("❌ **API ключ Google Gemini не налаштовано**")
+            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
+        elif insights["status"] == "error":
+            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
+        elif insights["status"] == "empty":
+            st.warning("⚠️ Отримано порожню відповідь від LLM")
+    
+    # Відображаємо інсайти LP топ-N якщо є
+    if "last_insights_lp_topn" in st.session_state:
+        insights = st.session_state["last_insights_lp_topn"]
+        
+        if insights["status"] == "success":
+            st.subheader("💡 AI Аналіз та Рекомендації (LP топ-N)")
+            st.markdown(insights.get("text", "Відповідь відсутня"))
+                
+        elif insights["status"] == "no_api":
+            st.error("❌ **API ключ Google Gemini не налаштовано**")
+            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
+        elif insights["status"] == "error":
+            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
+        elif insights["status"] == "empty":
+            st.warning("⚠️ Отримано порожню відповідь від LLM")
 
 with tab4:
     st.subheader("📈 Результати експериментів")

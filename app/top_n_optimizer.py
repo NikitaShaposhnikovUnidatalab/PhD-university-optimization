@@ -85,7 +85,7 @@ def run_top_n_ga_optimization(eligible, num_indicators, num_generations, sol_per
         # Зберігаємо дані про топ-N експеримент в сесії
         if not results_df.empty:
             best_result = results_df.iloc[0]
-            save_experiment_to_session(
+            experiment = save_experiment_to_session(
                 algorithm="GA_TopN",
                 current_qs=current_qs,
                 qs_score=best_result['qs_score'],
@@ -107,6 +107,9 @@ def run_top_n_ga_optimization(eligible, num_indicators, num_generations, sol_per
                 QS_INPUT=QS_INPUT,
                 solution=best_result['solution']
             )
+            
+            # Зберігаємо експеримент для AI аналізу
+            st.session_state["last_ga_topn_experiment"] = experiment
         
         display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, "GA", QS_INPUT, QS_WEIGHTS)
 
@@ -178,7 +181,7 @@ def run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS
         
         if not results_df.empty:
             best_result = results_df.iloc[0]
-            save_experiment_to_session(
+            experiment = save_experiment_to_session(
                 algorithm="LP_TopN",
                 current_qs=current_qs,
                 qs_score=best_result['qs_score'],
@@ -200,6 +203,9 @@ def run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS
                 QS_INPUT=QS_INPUT,
                 solution=best_result['solution']
             )
+            
+            # Зберігаємо експеримент для AI аналізу
+            st.session_state["last_lp_topn_experiment"] = experiment
         
         display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, "LP", QS_INPUT, QS_WEIGHTS)
 
