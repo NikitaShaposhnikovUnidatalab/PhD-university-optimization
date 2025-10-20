@@ -611,28 +611,18 @@ with tab1:
                     st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
                     st.info("💡 Перевірте налаштування API ключа Google Gemini")
     
-    # Відображаємо інсайти GA якщо є
-    if "last_insights_ga" in st.session_state:
-        insights = st.session_state["last_insights_ga"]
+    # Відображаємо інсайти (GA або LP) - замінюємо один одним
+    if "last_insights_ga" in st.session_state or "last_insights_lp" in st.session_state:
+        # Пріоритет: показуємо останній згенерований інсайт
+        if "last_insights_lp" in st.session_state:
+            insights = st.session_state["last_insights_lp"]
+            algorithm_name = "LP"
+        else:
+            insights = st.session_state["last_insights_ga"]
+            algorithm_name = "GA"
         
         if insights["status"] == "success":
-            st.subheader("💡 AI Аналіз та Рекомендації (GA)")
-            st.markdown(insights.get("text", "Відповідь відсутня"))
-                
-        elif insights["status"] == "no_api":
-            st.error("❌ **API ключ Google Gemini не налаштовано**")
-            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
-        elif insights["status"] == "error":
-            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
-        elif insights["status"] == "empty":
-            st.warning("⚠️ Отримано порожню відповідь від LLM")
-    
-    # Відображаємо інсайти LP якщо є
-    if "last_insights_lp" in st.session_state:
-        insights = st.session_state["last_insights_lp"]
-        
-        if insights["status"] == "success":
-            st.subheader("💡 AI Аналіз та Рекомендації (LP)")
+            st.subheader(f"💡 AI Аналіз та Рекомендації ({algorithm_name})")
             st.markdown(insights.get("text", "Відповідь відсутня"))
                 
         elif insights["status"] == "no_api":
@@ -772,6 +762,7 @@ with tab2:
                 else:
                     print(f"📊 Ручні параметри для обраних: поколінь={num_generations_selected}, популяція={sol_per_pop_selected}, батьки={num_parents_mating_selected}, мутації={mutation_percent_genes_selected}%")
                 
+                start_time = time.time()
                 effective_delta = {k: (float(QS_DELTA[k]) if k in selected_keys else 0.0) for k in all_keys}
                 
                 if auto_find_params_selected:
@@ -843,6 +834,7 @@ with tab2:
         with cols[1]:
             if st.button("🧮 Запустити LP (обрані)", key="lp_selected", use_container_width=True):
                 print(f"🧮 Користувач запустив LP-оптимізацію обраних показників: {selected_keys}")
+                start_time = time.time()
                 x_2026, qs_score_lp, df_lp = optimize_qs_pulp(
                     QS_INPUT=QS_INPUT,
                     QS_WEIGHTS=QS_WEIGHTS,
@@ -952,28 +944,18 @@ with tab2:
                     st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
                     st.info("💡 Перевірте налаштування API ключа Google Gemini")
     
-    # Відображаємо інсайти GA обраних якщо є
-    if "last_insights_ga_selected" in st.session_state:
-        insights = st.session_state["last_insights_ga_selected"]
+    # Відображаємо інсайти (GA або LP) - замінюємо один одним
+    if "last_insights_ga_selected" in st.session_state or "last_insights_lp_selected" in st.session_state:
+        # Пріоритет: показуємо останній згенерований інсайт
+        if "last_insights_lp_selected" in st.session_state:
+            insights = st.session_state["last_insights_lp_selected"]
+            algorithm_name = "LP обрані"
+        else:
+            insights = st.session_state["last_insights_ga_selected"]
+            algorithm_name = "GA обрані"
         
         if insights["status"] == "success":
-            st.subheader("💡 AI Аналіз та Рекомендації (GA обрані)")
-            st.markdown(insights.get("text", "Відповідь відсутня"))
-                
-        elif insights["status"] == "no_api":
-            st.error("❌ **API ключ Google Gemini не налаштовано**")
-            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
-        elif insights["status"] == "error":
-            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
-        elif insights["status"] == "empty":
-            st.warning("⚠️ Отримано порожню відповідь від LLM")
-    
-    # Відображаємо інсайти LP обраних якщо є
-    if "last_insights_lp_selected" in st.session_state:
-        insights = st.session_state["last_insights_lp_selected"]
-        
-        if insights["status"] == "success":
-            st.subheader("💡 AI Аналіз та Рекомендації (LP обрані)")
+            st.subheader(f"💡 AI Аналіз та Рекомендації ({algorithm_name})")
             st.markdown(insights.get("text", "Відповідь відсутня"))
                 
         elif insights["status"] == "no_api":
@@ -1200,28 +1182,18 @@ with tab3:
                     st.error(f"❌ **Помилка генерації інсайтів:** {str(e)}")
                     st.info("💡 Перевірте налаштування API ключа Google Gemini")
     
-    # Відображаємо інсайти GA топ-N якщо є
-    if "last_insights_ga_topn" in st.session_state:
-        insights = st.session_state["last_insights_ga_topn"]
+    # Відображаємо інсайти (GA або LP топ-N) - замінюємо один одним
+    if "last_insights_ga_topn" in st.session_state or "last_insights_lp_topn" in st.session_state:
+        # Пріоритет: показуємо останній згенерований інсайт
+        if "last_insights_lp_topn" in st.session_state:
+            insights = st.session_state["last_insights_lp_topn"]
+            algorithm_name = "LP топ-N"
+        else:
+            insights = st.session_state["last_insights_ga_topn"]
+            algorithm_name = "GA топ-N"
         
         if insights["status"] == "success":
-            st.subheader("💡 AI Аналіз та Рекомендації (GA топ-N)")
-            st.markdown(insights.get("text", "Відповідь відсутня"))
-                
-        elif insights["status"] == "no_api":
-            st.error("❌ **API ключ Google Gemini не налаштовано**")
-            st.info("💡 Додайте GOOGLE_API_KEY в файл .env")
-        elif insights["status"] == "error":
-            st.error(f"❌ **Помилка аналізу:** {insights.get('text', 'Невідома помилка')}")
-        elif insights["status"] == "empty":
-            st.warning("⚠️ Отримано порожню відповідь від LLM")
-    
-    # Відображаємо інсайти LP топ-N якщо є
-    if "last_insights_lp_topn" in st.session_state:
-        insights = st.session_state["last_insights_lp_topn"]
-        
-        if insights["status"] == "success":
-            st.subheader("💡 AI Аналіз та Рекомендації (LP топ-N)")
+            st.subheader(f"💡 AI Аналіз та Рекомендації ({algorithm_name})")
             st.markdown(insights.get("text", "Відповідь відсутня"))
                 
         elif insights["status"] == "no_api":
