@@ -12,18 +12,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Приховуємо sidebar повністю
-st.markdown("""
-<style>
-    [data-testid="stSidebar"] {
-        display: none;
-    }
-    [data-testid="collapsedControl"] {
-        display: none;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 st.title("⚙️ Налаштування параметрів QS рейтингу")
 st.markdown("**Введіть поточні значення показників, ваги та обмеження для оптимізації на 2026 рік**")
 
@@ -229,12 +217,7 @@ with col2:
         if budget > 0 and eligible_count >= 2:
             print(f"✅ Валідація пройшла успішно: бюджет={budget}, придатних показників={eligible_count}")
             st.success("✅ **Параметри налаштовано! Переходимо до оптимізації...**")
-            # Переходимо на потрібну сторінку залежно від режиму
-            app_mode = st.session_state.get("app_mode", "full")
-            if app_mode == "simple":
-                st.switch_page("pages/_genetic_optimizer_simple.py")
-            else:
-                st.switch_page("pages/_genetic_optimizer.py")
+            st.switch_page("pages/2_Оптимізація.py")
         else:
             print(f"❌ Валідація не пройшла: бюджет={budget}, придатних показників={eligible_count}")
             st.error("❌ **Виправте помилки перед запуском оптимізації!**")

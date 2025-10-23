@@ -28,18 +28,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Приховуємо sidebar повністю
-st.markdown("""
-<style>
-    [data-testid="stSidebar"] {
-        display: none;
-    }
-    [data-testid="collapsedControl"] {
-        display: none;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 st.title("🎯 QS Ranking Optimizer")
 st.markdown("**Оптимізація рейтингу університету за допомогою генетичних алгоритмів**")
 st.markdown("📅 **Ціль:** Покращення QS рейтингу на 2026 рік в межах доступного бюджету")

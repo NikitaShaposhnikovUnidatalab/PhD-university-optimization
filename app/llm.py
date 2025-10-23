@@ -3,10 +3,12 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Завантажуємо змінні середовища
-load_dotenv()
+# Завантажуємо змінні середовища з кореневої папки проекту
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 class QSInsightsGenerator:
     """

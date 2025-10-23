@@ -211,17 +211,16 @@ def run_top_n_lp_optimization(eligible, num_indicators, QS_INPUT, QS_WEIGHTS, QS
 
 def display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, algorithm, QS_INPUT, QS_WEIGHTS):
     """Відображає результати для топ-N оптимізації"""
-    st.success(f"✅ **Топ-N оптимізація ({algorithm}) завершена!**")
-    st.header(f"📈 Результати топ-N оптимізації ({algorithm})")
+    st.markdown(f"### Результати топ-N оптимізації ({algorithm})")
     
     if not results_df.empty:
         best = results_df.iloc[0]
         
-        st.subheader("🏆 Найкраща стратегія")
+        st.markdown("**Найкраща стратегія**")
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("QS Score", f"{best['qs_score']:.3f}", delta=f"{best['qs_score'] - current_qs:.3f}")
+            st.metric("QS Score", f"{best['qs_score']:.3f}", delta=f"+{best['qs_score'] - current_qs:.3f}")
         with col2:
             st.metric("Витрати RU", f"{best['ru']:.1f}", delta=f"{best['ru'] - MAX_RU:.1f}")
         with col3:
@@ -231,45 +230,46 @@ def display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, algorith
             improvement = ((best['qs_score'] - current_qs) / current_qs * 100) if current_qs > 0 else 0
             st.metric("Покращення", f"{improvement:.1f}%")
         
-        st.markdown(f"**🎯 Покращені показники:** {', '.join(best['combo'])}")
-        st.markdown(f"**🔧 Алгоритм:** {best['algorithm']}")
+        st.caption(f"Покращені показники: {', '.join(best['combo'])}")
+        st.caption(f"Алгоритм: {best['algorithm']}")
         
-        st.subheader("📊 Детальні значення найкращої стратегії")
-        all_keys = list(QS_INPUT.keys())
-        comparison_data = []
-        for key in all_keys:
-            comparison_data.append({
-                "Показник": key,
-                "Поточне значення": QS_INPUT[key],
-                "Нове значення": best['values'][key],
-                "Зміна": best['values'][key] - QS_INPUT[key],
-                "Внесок у QS": best['values'][key] * QS_WEIGHTS[key]
-            })
+        with st.expander("Детальні значення найкращої стратегії", expanded=True):
+            all_keys = list(QS_INPUT.keys())
+            comparison_data = []
+            for key in all_keys:
+                comparison_data.append({
+                    "Показник": key,
+                    "Поточне значення": QS_INPUT[key],
+                    "Нове значення": best['values'][key],
+                    "Зміна": best['values'][key] - QS_INPUT[key],
+                    "Внесок у QS": best['values'][key] * QS_WEIGHTS[key]
+                })
+            
+            comparison_df = pd.DataFrame(comparison_data)
+            st.dataframe(comparison_df, use_container_width=True)
         
-        comparison_df = pd.DataFrame(comparison_data)
-        st.dataframe(comparison_df, use_container_width=True)
-        
-        st.subheader("🥇 Топ-3 стратегії")
+        st.markdown("**Топ-3 стратегії**")
         top3_df = results_df.head(3).copy()
-        top3_df['Ранг'] = range(1, 4)
-        top3_df['Комбінація'] = top3_df['combo'].apply(lambda x: ', '.join(x))
+        top3_df['#'] = range(1, 4)
+        top3_df['Показники'] = top3_df['combo'].apply(lambda x: ', '.join(x))
         
-        display_cols = ['Ранг', 'Комбінація', 'qs_score', 'ru', 'algorithm']
+        display_cols = ['#', 'Показники', 'qs_score', 'ru', 'algorithm']
         st.dataframe(top3_df[display_cols].rename(columns={
             'qs_score': 'QS Score',
             'ru': 'Витрати RU',
             'algorithm': 'Алгоритм'
         }), use_container_width=True)
-        st.subheader("📋 Підсумкова статистика")
-        col1, col2, col3, col4 = st.columns(4)
         
-        with col1:
-            st.metric("Всього комбінацій", len(results_df))
-        with col2:
-            st.metric("Найкращий QS Score", f"{results_df['qs_score'].max():.3f}")
-        with col3:
-            st.metric("Середній QS Score", f"{results_df['qs_score'].mean():.3f}")
-        with col4:
-            st.metric("Час обчислення", f"{elapsed_time:.1f}с")
+        with st.expander("Статистика"):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Комбінацій", len(results_df))
+            with col2:
+                st.metric("Максимум", f"{results_df['qs_score'].max():.3f}")
+            with col3:
+                st.metric("Середнє", f"{results_df['qs_score'].mean():.3f}")
+            with col4:
+                st.metric("Час", f"{elapsed_time:.1f}с")
     else:
-        st.warning("Не знайдено жодної валідної стратегії з заданими обмеженнями.")
+        st.warning("Не знайдено валідних стратегій")
