@@ -4,3 +4,13 @@ matplotlib
 numpy
 pygad
 seaborn
+pulp
+optuna
+plotly
+chromadb
+sentence-transformers
+pypdf
+python-docx
+google-generativeai
+python-dotenv
+google-genai

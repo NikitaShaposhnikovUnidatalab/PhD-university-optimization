@@ -2,6 +2,9 @@ import pygad
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import optuna
+from typing import Dict, Any, Optional
+import time
 
 def compute_total_ru(QS_INPUT, QS_COST, solution):
     total_ru = 0
@@ -14,8 +17,9 @@ def compute_total_ru(QS_INPUT, QS_COST, solution):
     return total_ru
 
 # === QS Score === #
-def compute_qs_score(solution, QS_WEIGHTS):
-    return sum(solution[i] * w for i, w in enumerate(QS_WEIGHTS.values()))
+def compute_qs_score(solution, QS_WEIGHTS, keys):
+    """Обчислює оцінку використовуючи той самий порядок ключів як у масиві рішення."""
+    return sum(float(solution[i]) * float(QS_WEIGHTS[k]) for i, k in enumerate(keys))
 
 # === Фітнес-функція === #
 def make_fitness(QS_INPUT, QS_COST, QS_WEIGHTS, MAX_RU):
@@ -40,57 +44,211 @@ def make_fitness(QS_INPUT, QS_COST, QS_WEIGHTS, MAX_RU):
         if total_ru > MAX_RU:
             return -1000 * (total_ru - MAX_RU)
 
-        return compute_qs_score(solution, QS_WEIGHTS)
+        return compute_qs_score(solution, QS_WEIGHTS, keys)
 
     return fitness_func
 
 # === Простір генів === #
-def generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX):
+def generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX, QS_COST):
     gene_space = []
     for k in QS_INPUT.keys():
-        low = QS_INPUT[k]
-        if QS_DELTA[k] == 0:
+        low = float(QS_INPUT[k])
+        # Заморожуємо якщо delta == 0 або вартість нескінченна
+        if float(QS_DELTA.get(k, 0.0)) == 0.0 or QS_COST.get(k, 0.0) == float("inf"):
             gene_space.append([low])
         else:
-            high = min(low + QS_DELTA[k], QS_MAX[k])
+            high = float(min(low + float(QS_DELTA[k]), float(QS_MAX[k])))
             gene_space.append({"low": low, "high": high, "step": 0.1})
-    print("Gene space:", gene_space)
     return gene_space
 
-# === Запуск оптимізації === #
-def run_optimization(QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU):
-    gene_space = generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX)
+# === Автоматичний пошук параметрів === #
+def find_optimal_parameters(
+    QS_INPUT,
+    QS_WEIGHTS,
+    QS_MAX,
+    QS_DELTA,
+    QS_COST,
+    MAX_RU,
+    *,
+    n_trials: int = 20,
+    n_trials_per_eval: int = 2,
+    verbose: bool = True
+) -> Dict[str, Any]:
+    """
+    Автоматично знаходить оптимальні параметри для генетичного алгоритму
+    """
+    if verbose:
+        print(f"🔍 Початок пошуку оптимальних параметрів: {n_trials} експериментів")
+    
+    def objective(trial):
+        num_generations = trial.suggest_int("num_generations", 100, 500)
+        sol_per_pop = trial.suggest_int("sol_per_pop", 20, 100)
+        num_parents_mating = trial.suggest_int("num_parents_mating", 5, sol_per_pop // 2)
+        mutation_percent_genes = trial.suggest_int("mutation_percent_genes", 5, 40)
+        random_seed = trial.suggest_int("random_seed", 1, 1000)
+        
+        # Запускаємо кілька оцінок для стабільності
+        scores = []
+        for _ in range(n_trials_per_eval):
+            try:
+                ga = run_optimization_internal(
+                    QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU,
+                    num_generations=num_generations,
+                    sol_per_pop=sol_per_pop,
+                    num_parents_mating=num_parents_mating,
+                    mutation_percent_genes=mutation_percent_genes,
+                    stop_criteria="saturate_10",
+                    random_seed=random_seed
+                )
+                
+                solution, qs_score, _ = ga.best_solution()
+                scores.append(float(qs_score))
+            except Exception as e:
+                if verbose:
+                    print(f"⚠️ Помилка в trial {trial.number}: {str(e)}")
+                scores.append(0.0)
+        
+        return np.mean(scores)
+    
+    study = optuna.create_study(
+        direction="maximize",
+        sampler=optuna.samplers.TPESampler(),
+        pruner=optuna.pruners.MedianPruner()
+    )
+    
+    study.optimize(
+        objective,
+        n_trials=n_trials
+    )
+    
+    if verbose:
+        print(f"✅ Пошук завершено! Найкращий QS Score: {study.best_value:.3f}")
+        print(f"🎯 Найкращі параметри: {study.best_params}")
+    
+    return study.best_params
+
+# === Внутрішня функція оптимізації (без пошуку параметрів) === #
+def run_optimization_internal(
+    QS_INPUT,
+    QS_WEIGHTS,
+    QS_MAX,
+    QS_DELTA,
+    QS_COST,
+    MAX_RU,
+    *,
+    num_generations: int = 400,
+    sol_per_pop: int = 60,
+    num_parents_mating: int = 24,
+    mutation_percent_genes: int = 20,
+    stop_criteria: str | None = "saturate_15",
+    random_seed: int | None = 42,
+):
+    gene_space = generate_gene_space(QS_INPUT, QS_DELTA, QS_MAX, QS_COST)
     fitness_func = make_fitness(QS_INPUT, QS_COST, QS_WEIGHTS, MAX_RU)
 
     ga_instance = pygad.GA(
-        num_generations=500,
-        num_parents_mating=20,
+        num_generations=num_generations,
+        num_parents_mating=num_parents_mating,
         fitness_func=fitness_func,
-        sol_per_pop=45,
+        sol_per_pop=sol_per_pop,
         num_genes=len(QS_INPUT),
         gene_space=gene_space,
-        mutation_percent_genes=20,
+        mutation_percent_genes=mutation_percent_genes,
         mutation_type="random",
         random_mutation_min_val=0,
         random_mutation_max_val=1,
-        stop_criteria="saturate_10"
+        stop_criteria=stop_criteria,
+        random_seed=random_seed,
     )
 
     ga_instance.run()
-    print("=== GA finished ===")
-    print("Best solution:", ga_instance.best_solution())
-    print("Best fitness:", ga_instance.best_solution()[1])
     return ga_instance
 
+# === Основна функція оптимізації з автоматичним пошуком параметрів === #
+def run_optimization(
+    QS_INPUT,
+    QS_WEIGHTS,
+    QS_MAX,
+    QS_DELTA,
+    QS_COST,
+    MAX_RU,
+    *,
+    auto_find_params: bool = True,
+    n_trials: int = 15,
+    n_trials_per_eval: int = 2,
+    num_generations: Optional[int] = None,
+    sol_per_pop: Optional[int] = None,
+    num_parents_mating: Optional[int] = None,
+    mutation_percent_genes: Optional[int] = None,
+    stop_criteria: str | None = "saturate_15",
+    random_seed: int | None = 42,
+    verbose: bool = True
+):
+    """
+    Запускає оптимізацію з автоматичним пошуком параметрів або з заданими параметрами
+    
+    Args:
+        auto_find_params: Чи автоматично шукати оптимальні параметри
+        n_trials: Кількість експериментів для пошуку параметрів
+        n_trials_per_eval: Кількість оцінок на експеримент
+        timeout_minutes: Максимальний час пошуку параметрів
+        verbose: Чи виводити інформацію про пошук
+        ... інші параметри GA
+    """
+    
+    # Якщо потрібно автоматично знайти параметри
+    if auto_find_params and all(param is None for param in [num_generations, sol_per_pop, num_parents_mating, mutation_percent_genes]):
+        if verbose:
+            print("🔍 Автоматичний пошук оптимальних параметрів...")
+        
+        optimal_params = find_optimal_parameters(
+            QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU,
+            n_trials=n_trials,
+            n_trials_per_eval=n_trials_per_eval,
+            verbose=verbose
+        )
+        
+        # Використовуємо знайдені параметри
+        num_generations = optimal_params["num_generations"]
+        sol_per_pop = optimal_params["sol_per_pop"]
+        num_parents_mating = optimal_params["num_parents_mating"]
+        mutation_percent_genes = optimal_params["mutation_percent_genes"]
+        random_seed = optimal_params["random_seed"]
+        
+        if verbose:
+            print(f"🎯 Використовую знайдені параметри: поколінь={num_generations}, популяція={sol_per_pop}, батьки={num_parents_mating}, мутації={mutation_percent_genes}%")
+    
+    # Використовуємо стандартні параметри, якщо не вказано інші
+    if num_generations is None:
+        num_generations = 400
+    if sol_per_pop is None:
+        sol_per_pop = 60
+    if num_parents_mating is None:
+        num_parents_mating = 24
+    if mutation_percent_genes is None:
+        mutation_percent_genes = 20
+    
+    # Запускаємо оптимізацію з фінальними параметрами
+    return run_optimization_internal(
+        QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU,
+        num_generations=num_generations,
+        sol_per_pop=sol_per_pop,
+        num_parents_mating=num_parents_mating,
+        mutation_percent_genes=mutation_percent_genes,
+        stop_criteria=stop_criteria,
+        random_seed=random_seed
+    )
+
 def plot_progress(ga_instance):
-    plt.plot(ga_instance.best_solutions_fitness)
-    plt.xlabel("Покоління")
-    plt.ylabel("QS Overall Score")
-    plt.title("Динаміка покращення QS Score")
-    plt.grid(True)
+    plt.figure(figsize=(10, 6))
+    plt.plot(ga_instance.best_solutions_fitness, linewidth=2, color='#2E86AB')
+    plt.xlabel("Покоління", fontsize=12, fontweight='bold')
+    plt.ylabel("QS Overall Score", fontsize=12, fontweight='bold')
+    plt.title("Динаміка покращення QS Score", fontsize=14, fontweight='bold', pad=20)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
     plt.show()
     
-# utils
 def get_top_solutions(ga_instance, QS_INPUT, QS_COST, QS_WEIGHTS, top_n=10):
     import numpy as np
     scores = []
@@ -119,42 +277,68 @@ def get_top_solutions(ga_instance, QS_INPUT, QS_COST, QS_WEIGHTS, top_n=10):
     contrib_df = contrib_df[keys]
     return df, contrib_df
 
-
-def plot_stacked_bar(contrib_df, title="Stacked Bar внеску показників у QS Score"):
-    contrib_df.plot(
-        kind="bar",
-        stacked=True,
-        figsize=(10, 6),
-        cmap="tab20"
-    )
-    plt.xlabel("Стратегія (топ #)")
-    plt.ylabel("Внесок у QS Score")
-    plt.title(title)
-    plt.legend(title="Показник", bbox_to_anchor=(1.02, 1), loc="upper left")
-    plt.tight_layout()
+def save_experiment_to_session(algorithm, current_qs, qs_score, ru_used, execution_time, solution_details=None, comparison_metrics=None,
+                              improved_indicators=None, QS_INPUT=None, solution=None):
+    """
+    Зберігає дані експерименту в сесії Streamlit
     
-# def plot_stacked_bar_normalized(delta_df, title="Нормалізовані прирости показників"):
-#     norm_df = delta_df.copy()
-#     for col in norm_df.columns:
-#         max_delta = norm_df[col].max()
-#         if max_delta > 0:
-#             norm_df[col] = norm_df[col] / max_delta
-#         else:
-#             norm_df[col] = 0.0
+    Args:
+        algorithm: Назва алгоритму
+        current_qs: Початковий QS Score
+        qs_score: QS Score результату
+        ru_used: Витрати RU
+        execution_time: Час виконання
+        solution_details: Деталі рішення
+        comparison_metrics: Метрики порівняння
+        improved_indicators: Список покращених показників
+        QS_INPUT: Початкові значення показників
+        solution: Рішення (масив значень)
+    """
+    import streamlit as st
+    from datetime import datetime
+    
+    # Ініціалізуємо список експериментів в сесії якщо його немає
+    if "experiments_data" not in st.session_state:
+        st.session_state["experiments_data"] = []
+    
+    # Визначаємо покращені показники якщо не передано
+    if improved_indicators is None and QS_INPUT is not None and solution is not None:
+        improved_indicators = []
+        for i, (key, initial_value) in enumerate(QS_INPUT.items()):
+            if i < len(solution) and float(solution[i]) > float(initial_value):
+                improved_indicators.append(key)
+    
+    # Конвертуємо solution в list якщо це numpy array
+    solution_to_save = solution
+    if solution is not None:
+        if hasattr(solution, 'tolist'):  # numpy array
+            solution_to_save = solution.tolist()
+        elif not isinstance(solution, list):
+            try:
+                solution_to_save = list(solution)
+            except:
+                pass
+    
+    # Створюємо запис експерименту
+    experiment = {
+        "timestamp": datetime.now().isoformat(),
+        "algorithm": algorithm,
+        "current_qs": float(current_qs),
+        "qs_score": float(qs_score),
+        "ru_used": float(ru_used),
+        "execution_time": float(execution_time),
+        "solution_details": solution_details or {},
+        "comparison_metrics": comparison_metrics or {},
+        "improved_indicators": improved_indicators or [],
+        "QS_INPUT": QS_INPUT,  # Зберігаємо початкові значення
+        "solution": solution_to_save   # Зберігаємо рішення (нові значення) як list
+    }
 
-#     norm_df.plot(
-#         kind="bar",
-#         stacked=True,
-#         figsize=(10, 6),
-#         cmap="tab20"
-#     )
-#     print(norm_df)
-#     plt.xlabel("Стратегія (топ #)")
-#     plt.ylabel("Нормалізований приріст (0..1)")
-#     plt.title(title)
-#     plt.legend(title="Показник", bbox_to_anchor=(1.02, 1), loc="upper left")
-#     plt.tight_layout()
-#     plt.show()
+    st.session_state["experiments_data"].append(experiment)
+    print(st.session_state["experiments_data"])
+    
+    improved_str = ", ".join(improved_indicators) if improved_indicators else "немає"
+    return experiment
 
 if __name__ == "__main__":
     QS_INPUT = {"AR": 6.5, "ER": 10.6, "FSR": 54.3, "CPF": 1.3,
@@ -165,9 +349,9 @@ if __name__ == "__main__":
               "IFR": 12, "ISR": 20, "IRN": 30, "EO": 15, "SUS": 10}
     QS_DELTA = {"AR": 1.0, "ER": 1.0, "FSR": 1.0, "CPF": 0.3,
                 "IFR": 2.0, "ISR": 0.0, "IRN": 5.0, "EO": 2.0, "SUS": 1.0}
-    QS_COST = {"AR": 100, "ER": 90, "FSR": 40, "CPF": 30,
-               "IFR": 60, "ISR": float("inf"), "IRN": 20, "EO": 20, "SUS": 10}
-    MAX_RU = 200
+    QS_COST = {"AR": 50, "ER": 45, "FSR": 20, "CPF": 15,
+               "IFR": 30, "ISR": float("inf"), "IRN": 10, "EO": 10, "SUS": 5}
+    MAX_RU = 100
 
     ga = run_optimization(QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU)
     solution, qs_score, _ = ga.best_solution()
@@ -179,5 +363,4 @@ if __name__ == "__main__":
 
     print(f"\nQS Overall Score (2026): {qs_score:.2f}")
 
-    # Побудова графіка
     plot_progress(ga)

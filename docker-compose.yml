@@ -1,12 +1,38 @@
 version: "3.9"
 
 services:
-  qs-app:
-    build: .
-    container_name: qs-streamlit-app
+  qs-app-full:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: qs-streamlit-app:latest
+    container_name: qs-streamlit-app-full
     ports:
       - "8501:8501"
     volumes:
-      - .:/app
+      - ./app:/app/app:ro
+      - ./.env:/app/.env:ro
     environment:
       - PYTHONUNBUFFERED=1
+    command: ["streamlit", "run", "app/full/main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    restart: unless-stopped
+
+  qs-app-simple:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: qs-streamlit-app:latest
+    container_name: qs-streamlit-app-simple
+    ports:
+      - "8502:8502"
+    volumes:
+      - ./app:/app/app:ro
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["streamlit", "run", "app/simple/main.py", "--server.port=8502", "--server.address=0.0.0.0"]
+    restart: unless-stopped
