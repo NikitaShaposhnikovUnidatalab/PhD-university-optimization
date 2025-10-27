@@ -8,7 +8,11 @@ import time
 import sys
 import os
 from datetime import datetime
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
+
 from top_n_optimizer import run_top_n_lp_optimization
 from genetic_optimizer import compute_total_ru, save_experiment_to_session
 from lp import optimize_qs_pulp
@@ -56,7 +60,7 @@ MAX_RU = st.session_state["MAX_RU"]
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("💰 Бюджет", f"{MAX_RU:,} RU")
+    st.metric("💰 Бюджет", f"{MAX_RU:,} ресурсних одиниць")
 with col2:
     eligible_count = sum(1 for k in QS_INPUT.keys() if float(QS_DELTA.get(k, 0.0)) > 0 and float(QS_COST.get(k, 0.0)) != float("inf"))
     st.metric("📊 Показників", eligible_count)
@@ -210,7 +214,7 @@ with tab1:
                     improvement = ((qs_score_lp - current_qs) / current_qs * 100) if current_qs > 0 else 0
                     st.metric("📈 Зростання", f"{improvement:.1f}%")
                 with col3:
-                    st.metric("💰 Витрачено", f"{ru_used:,.0f} RU")
+                    st.metric("💰 Витрачено", f"{ru_used:,.0f} ресурсних одиниць")
                 
                 with st.expander("📊 Деталі", expanded=True):
                     st.dataframe(df_lp, use_container_width=True)
@@ -346,7 +350,7 @@ with tab2:
                 improvement = ((qs_score_lp - current_qs) / current_qs * 100) if current_qs > 0 else 0
                 st.metric("📈 Зростання", f"{improvement:.1f}%")
             with col3:
-                st.metric("💰 Витрачено", f"{ru_used:,.0f} RU")
+                st.metric("💰 Витрачено", f"{ru_used:,.0f} ресурсних одиниць")
 
             with st.expander("📊 Деталі", expanded=True):
                 st.dataframe(df_lp, use_container_width=True)

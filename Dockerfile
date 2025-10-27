@@ -22,7 +22,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY . .
 
-EXPOSE 8501
+EXPOSE 8501 8502
 
-# Запускаємо з правами на очищення тимчасових директорій
-ENTRYPOINT ["streamlit", "run", "app/main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "app/full/main.py", "--server.port=8501", "--server.address=0.0.0.0"]

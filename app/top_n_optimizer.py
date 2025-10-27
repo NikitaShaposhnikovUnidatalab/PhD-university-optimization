@@ -9,6 +9,19 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from genetic_optimizer import run_optimization, compute_total_ru, save_experiment_to_session
 from lp import optimize_qs_pulp
 
+# Словник з описами показників
+INDICATOR_DESCRIPTIONS = {
+    "AR": "Academic Reputation - Репутація в академічному середовищі",
+    "ER": "Employer Reputation - Репутація серед роботодавців", 
+    "FSR": "Faculty Student Ratio - Співвідношення викладачів до студентів",
+    "CPF": "Citations per Faculty - Цитування на викладача",
+    "IFR": "International Faculty Ratio - Частка іноземних викладачів",
+    "ISR": "International Student Ratio - Частка іноземних студентів",
+    "IRN": "International Research Network - Міжнародна дослідницька мережа",
+    "EO": "Employment Outcomes - Результати працевлаштування",
+    "SUS": "Sustainability - Сталість розвитку"
+}
+
 def run_top_n_ga_optimization(eligible, num_indicators, num_generations, sol_per_pop, num_parents_mating, mutation_percent_genes, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU, current_qs, auto_find_params=False, n_trials=10):
     """Запускає GA оптимізацію для всіх комбінацій показників"""
     with st.spinner("Обчислюю найкращі комбінації з GA..."):
@@ -230,15 +243,19 @@ def display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, algorith
             improvement = ((best['qs_score'] - current_qs) / current_qs * 100) if current_qs > 0 else 0
             st.metric("Покращення", f"{improvement:.1f}%")
         
-        st.caption(f"Покращені показники: {', '.join(best['combo'])}")
+        # Форматуємо список покращених показників з розшифровкою
+        improved_indicators_list = [f"{ind} ({INDICATOR_DESCRIPTIONS.get(ind, ind).split(' - ')[0]})" for ind in best['combo']]
+        st.caption(f"Покращені показники: {', '.join(improved_indicators_list)}")
         st.caption(f"Алгоритм: {best['algorithm']}")
         
         with st.expander("Детальні значення найкращої стратегії", expanded=True):
             all_keys = list(QS_INPUT.keys())
             comparison_data = []
             for key in all_keys:
+                # Додаємо розшифровку назви показника
+                indicator_name = f"{key} - {INDICATOR_DESCRIPTIONS.get(key, key)}"
                 comparison_data.append({
-                    "Показник": key,
+                    "Показник": indicator_name,
                     "Поточне значення": QS_INPUT[key],
                     "Нове значення": best['values'][key],
                     "Зміна": best['values'][key] - QS_INPUT[key],
@@ -251,7 +268,10 @@ def display_top_n_results(results_df, current_qs, MAX_RU, elapsed_time, algorith
         st.markdown("**Топ-3 стратегії**")
         top3_df = results_df.head(3).copy()
         top3_df['#'] = range(1, 4)
-        top3_df['Показники'] = top3_df['combo'].apply(lambda x: ', '.join(x))
+        # Додаємо розшифровку назв показників в списку
+        top3_df['Показники'] = top3_df['combo'].apply(
+            lambda x: ', '.join([f"{ind} ({INDICATOR_DESCRIPTIONS.get(ind, ind).split(' - ')[0]})" for ind in x])
+        )
         
         display_cols = ['#', 'Показники', 'qs_score', 'ru', 'algorithm']
         st.dataframe(top3_df[display_cols].rename(columns={

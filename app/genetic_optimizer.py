@@ -308,6 +308,17 @@ def save_experiment_to_session(algorithm, current_qs, qs_score, ru_used, executi
             if i < len(solution) and float(solution[i]) > float(initial_value):
                 improved_indicators.append(key)
     
+    # Конвертуємо solution в list якщо це numpy array
+    solution_to_save = solution
+    if solution is not None:
+        if hasattr(solution, 'tolist'):  # numpy array
+            solution_to_save = solution.tolist()
+        elif not isinstance(solution, list):
+            try:
+                solution_to_save = list(solution)
+            except:
+                pass
+    
     # Створюємо запис експерименту
     experiment = {
         "timestamp": datetime.now().isoformat(),
@@ -318,7 +329,9 @@ def save_experiment_to_session(algorithm, current_qs, qs_score, ru_used, executi
         "execution_time": float(execution_time),
         "solution_details": solution_details or {},
         "comparison_metrics": comparison_metrics or {},
-        "improved_indicators": improved_indicators or []
+        "improved_indicators": improved_indicators or [],
+        "QS_INPUT": QS_INPUT,  # Зберігаємо початкові значення
+        "solution": solution_to_save   # Зберігаємо рішення (нові значення) як list
     }
 
     st.session_state["experiments_data"].append(experiment)

@@ -2,7 +2,11 @@ import math
 import streamlit as st
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
+
 from utils.state import init_state_obj, init_state_value, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU
 
 st.set_page_config(
@@ -28,14 +32,14 @@ init_state_value("MAX_RU", MAX_RU)
 st.markdown("---")
 
 new_budget = st.number_input(
-    "💰 Бюджет (RU)",
+    "💰 Бюджет (ресурсні одиниці)",
     value=float(st.session_state["MAX_RU"]),
     step=10.0,
     min_value=0.0,
     key="max_ru_input",
 )
 if new_budget != st.session_state["MAX_RU"]:
-    print(f"💰 Користувач змінив бюджет з {st.session_state['MAX_RU']} на {new_budget} RU")
+    print(f"💰 Користувач змінив бюджет з {st.session_state['MAX_RU']} на {new_budget} ресурсних одиниць")
     st.session_state["MAX_RU"] = new_budget
 
 def get_cost_str(x) -> str:
@@ -56,7 +60,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Поточні значення (2025)",
     "⚖️ Ваги (QS formula)",
     "🔼 Максимум покращення (Δ)",
-    "💰 Вартість (RU)"
+    "💰 Вартість (ресурсні одиниці)"
 ])
 
 indicator_descriptions = {
@@ -135,7 +139,7 @@ with tab3:
                 st.session_state["QS_DELTA"][k] = round(new_delta, 2)
 
 with tab4:
-    st.caption("Вартість покращення кожного показника в RU. Введіть 'inf' якщо неможливо покращити")
+    st.caption("Вартість покращення кожного показника в ресурсних одиницях. Введіть 'inf' якщо неможливо покращити")
     
     col1, col2 = st.columns(2)
     
@@ -163,7 +167,7 @@ weights_sum = sum(float(st.session_state["QS_WEIGHTS"][k]) for k in QS_WEIGHTS.k
 eligible_count = sum(1 for k in QS_INPUT.keys() if float(st.session_state["QS_DELTA"][k]) > 0 and float(st.session_state["QS_COST"][k]) != float("inf"))
 
 with col1:
-    st.metric("💰 Бюджет", f"{budget:,} RU")
+    st.metric("💰 Бюджет", f"{budget:,} ресурсних одиниць")
 
 with col2:
     st.metric("⚖️ Сума ваг", f"{weights_sum:.3f}")

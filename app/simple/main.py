@@ -2,8 +2,9 @@ import streamlit as st
 import sys
 import os
 
-# Додаємо батьківську директорію до шляху для імпорту модулів
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
 
 from utils.state import init_state_obj, init_state_value, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU
 

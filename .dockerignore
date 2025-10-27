@@ -1,59 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
 # Virtual environments
 .venv/
 venv/
 env/
+ENV/
+.env/
 
-# Bytecode / caches
-__pycache__/
-*.pyc
-*.pyo
-
-# Notebooks and experiments
-*.ipynb
-QS_WUR_Graphs_*.*
-rag.ipynb
-
-# Docs and Office files
-*.docx
-*.pdf
-docs/
-Формули_алгоритмів*/
-
-# Local databases, embeddings, indexes
-chroma_db/
-
-# Logs, outputs, models
-*.log
-*.pkl
-*.csv
-*.xlsx
-*.zip
-*.json
-*.npy
-*.pt
-*.h5
-models/
-outputs/
-logs/
-
-# IDE / system files
+# IDE
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db
+*.swp
+*.swo
+*~
 
 # Git
 .git/
 .gitignore
 
-# Environment files (copied separately if needed)
-.env
-
-# Docker files
+# Docker
 Dockerfile
 docker-compose.yml
 .dockerignore
 
 # Documentation
+*.md
 README.md
-LLM_INSIGHTS.md
+
+# Logs and temp files
+*.log
+.DS_Store
+
+# Environment files (will be mounted separately)
+.env
+.env.*

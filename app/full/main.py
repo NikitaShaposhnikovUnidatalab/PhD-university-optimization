@@ -2,8 +2,9 @@ import streamlit as st
 import sys
 import os
 
-# Додаємо батьківську директорію до шляху для імпорту модулів
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
 
 from utils.state import init_state_obj, init_state_value, QS_INPUT, QS_WEIGHTS, QS_MAX, QS_DELTA, QS_COST, MAX_RU
 
@@ -66,7 +67,7 @@ with col1:
     st.markdown("Введіть поточні значення показників, ваги та обмеження")
     if st.button("⚙️ Налаштувати параметри", type="primary", use_container_width=True):
         print("🔧 Користувач натиснув кнопку 'Налаштувати параметри' - перехід на сторінку конфігурації")
-        st.switch_page("pages/_input_config.py")
+        st.switch_page("pages/1_Налаштування.py")
 
 with col2:
     st.markdown("### 🚀 Оптимізація")

@@ -8,10 +8,26 @@ import time
 import sys
 import os
 from datetime import datetime
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+app_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
+
 from top_n_optimizer import run_top_n_ga_optimization, run_top_n_lp_optimization
 from genetic_optimizer import run_optimization, plot_progress, get_top_solutions, compute_total_ru, save_experiment_to_session
 from lp import optimize_qs_pulp
+
+INDICATOR_DESCRIPTIONS = {
+    "AR": "Academic Reputation - Репутація в академічному середовищі",
+    "ER": "Employer Reputation - Репутація серед роботодавців", 
+    "FSR": "Faculty Student Ratio - Співвідношення викладачів до студентів",
+    "CPF": "Citations per Faculty - Цитування на викладача",
+    "IFR": "International Faculty Ratio - Частка іноземних викладачів",
+    "ISR": "International Student Ratio - Частка іноземних студентів",
+    "IRN": "International Research Network - Міжнародна дослідницька мережа",
+    "EO": "Employment Outcomes - Результати працевлаштування",
+    "SUS": "Sustainability - Сталість розвитку"
+}
 
 plt.style.use('seaborn-v0_8')
 sns.set_palette("husl")
@@ -415,6 +431,9 @@ with tab1:
             (deltas[k] * float(QS_COST[k])) if QS_COST[k] < float("inf") else 0.0
             for k in QS_INPUT.keys()
         )
+        
+        # Додаємо розшифровку назв показників
+        df_lp['Показник'] = df_lp['Показник'].apply(lambda x: f"{x} - {INDICATOR_DESCRIPTIONS.get(x, x)}")
 
         st.success("✅ **LP-оптимізація завершена!**")
         elapsed_time_lp_full = time.time() - start_time
@@ -851,6 +870,9 @@ with tab2:
                     (deltas[k] * float(QS_COST[k])) if QS_COST[k] < float("inf") else 0.0
                     for k in QS_INPUT.keys()
                 )
+                
+                # Додаємо розшифровку назв показників
+                df_lp['Показник'] = df_lp['Показник'].apply(lambda x: f"{x} - {INDICATOR_DESCRIPTIONS.get(x, x)}")
                 
                 experiment = save_experiment_to_session(
                     algorithm="LP_Selected",
